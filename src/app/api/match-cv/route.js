@@ -1,5 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import pdf from "pdf-parse"; // for parsing CVs in PDF format
+// Don't statically import 'pdf-parse' here because its top-level index.js
+// runs a debug/test block when required which attempts to read
+// ./test/data/05-versions-space.pdf and crashes in some environments.
+// We'll dynamically import the implementation inside the handler.
 
 // ✅ Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
@@ -22,8 +25,11 @@ export async function POST(req) {
     const buffer = Buffer.from(arrayBuffer);
 
     // ✅ Extract text from CV (PDF only here, but we can add .doc/.docx later)
+    // Dynamically import the implementation to avoid the top-level test harness.
     let cvText = "";
     if (file.name.endsWith(".pdf")) {
+      const pdfModule = await import("pdf-parse/lib/pdf-parse.js");
+      const pdf = pdfModule.default || pdfModule;
       const pdfData = await pdf(buffer);
       cvText = pdfData.text;
     } else {
